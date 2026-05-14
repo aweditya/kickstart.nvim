@@ -99,7 +99,7 @@ do
   vim.g.maplocalleader = ' '
 
   -- Set to true if you have a Nerd Font installed and selected in the terminal
-  vim.g.have_nerd_font = false
+  vim.g.have_nerd_font = true
 
   -- These legacy host providers are only needed by remote plugins written for
   -- those runtimes. LSP, formatters, Treesitter, and Telescope do not need them.
