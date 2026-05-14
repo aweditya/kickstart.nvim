@@ -167,6 +167,15 @@ do
   -- Minimal number of screen lines to keep above and below the cursor.
   vim.o.scrolloff = 10
 
+  -- Use 4 spaces by default. Filetype plugins and modelines can override these
+  -- locally, so reinforce them when a buffer gets a filetype.
+  vim.o.expandtab = true
+  vim.o.shiftwidth = 4
+  vim.o.tabstop = 4
+  vim.o.softtabstop = 4
+  vim.o.shiftround = true
+  vim.o.smartindent = true
+
   -- if performing an operation that would fail due to unsaved changes in the buffer (like `:q`),
   -- instead raise a dialog asking if you wish to save the current file(s)
   -- See `:help 'confirm'`
@@ -244,6 +253,25 @@ do
     desc = 'Highlight when yanking (copying) text',
     group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
     callback = function() vim.hl.on_yank() end,
+  })
+
+  vim.api.nvim_create_autocmd({ 'BufEnter', 'FileType' }, {
+    desc = 'Prefer four-space indentation for edited files',
+    group = vim.api.nvim_create_augroup('user-four-space-indent', { clear = true }),
+    callback = function()
+      if vim.bo.filetype == 'make' then
+        vim.opt_local.expandtab = false
+        vim.opt_local.shiftwidth = 4
+        vim.opt_local.tabstop = 4
+        vim.opt_local.softtabstop = 0
+        return
+      end
+
+      vim.opt_local.expandtab = true
+      vim.opt_local.shiftwidth = 4
+      vim.opt_local.tabstop = 4
+      vim.opt_local.softtabstop = 4
+    end,
   })
 end
 
@@ -337,8 +365,8 @@ do
   --
   -- We first install it from https://github.com/NMAC427/guess-indent.nvim
   -- and then call its `setup()` function to start it with default settings.
-  vim.pack.add { gh 'NMAC427/guess-indent.nvim' }
-  require('guess-indent').setup {}
+  -- Intentionally not using an indentation guessing plugin: this config keeps
+  -- four-space indentation as the default instead.
 
   -- Because lua is a real programming language, you can also have some logic to your installation -
   -- like only installing a plugin if a condition is met.
@@ -686,18 +714,87 @@ do
   --  See `:help lsp-config` for information about keys and how to configure
   ---@type table<string, vim.lsp.Config>
   local servers = {
-    -- clangd = {},
-    -- gopls = {},
-    -- pyright = {},
-    -- rust_analyzer = {},
+    clangd = {
+      cmd = {
+        'clangd',
+        '--background-index',
+        '--clang-tidy',
+        '--completion-style=detailed',
+        '--header-insertion=iwyu',
+        '--fallback-style=llvm',
+      },
+      init_options = {
+        clangdFileStatus = true,
+      },
+    },
+    gopls = {
+      settings = {
+        gopls = {
+          gofumpt = true,
+          staticcheck = true,
+          analyses = {
+            nilness = true,
+            unusedparams = true,
+            unusedwrite = true,
+            useany = true,
+          },
+          hints = {
+            assignVariableTypes = true,
+            compositeLiteralFields = true,
+            compositeLiteralTypes = true,
+            constantValues = true,
+            functionTypeParameters = true,
+            parameterNames = true,
+            rangeVariableTypes = true,
+          },
+        },
+      },
+    },
+    pyright = {
+      settings = {
+        python = {
+          analysis = {
+            autoSearchPaths = true,
+            diagnosticMode = 'workspace',
+            typeCheckingMode = 'basic',
+            useLibraryCodeForTypes = true,
+          },
+        },
+      },
+    },
+    rust_analyzer = {
+      settings = {
+        ['rust-analyzer'] = {
+          cargo = {
+            allFeatures = true,
+          },
+          check = {
+            command = 'clippy',
+          },
+          completion = {
+            fullFunctionSignatures = {
+              enable = true,
+            },
+          },
+          procMacro = {
+            enable = true,
+          },
+        },
+      },
+    },
     --
     -- Some languages (like typescript) have entire language plugins that can be useful:
     --    https://github.com/pmizio/typescript-tools.nvim
     --
     -- But for many setups, the LSP (`ts_ls`) will work just fine
-    -- ts_ls = {},
-
-    stylua = {}, -- Used to format Lua code
+    ts_ls = {},
+    eslint = {},
+    bashls = {},
+    html = {},
+    cssls = {},
+    jsonls = {},
+    yamlls = {},
+    taplo = {},
 
     -- Special Lua Config, as recommended by neovim help docs
     lua_ls = {
@@ -754,6 +851,15 @@ do
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
     -- You can add other tools here that you want Mason to install
+    'black',
+    'clang-format',
+    'gofumpt',
+    'goimports',
+    'isort',
+    'prettier',
+    'shfmt',
+    'stylua',
+    'tree-sitter-cli',
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -774,28 +880,46 @@ do
   require('conform').setup {
     notify_on_error = false,
     format_on_save = function(bufnr)
-      -- You can specify filetypes to autoformat on save here:
-      local enabled_filetypes = {
-        -- lua = true,
-        -- python = true,
+      return {
+        timeout_ms = 1500,
+        lsp_format = 'fallback',
       }
-      if enabled_filetypes[vim.bo[bufnr].filetype] then
-        return { timeout_ms = 500 }
-      else
-        return nil
-      end
     end,
     default_format_opts = {
       lsp_format = 'fallback', -- Use external formatters if configured below, otherwise use LSP formatting. Set to `false` to disable LSP formatting entirely.
     },
     -- You can also specify external formatters in here.
     formatters_by_ft = {
-      -- rust = { 'rustfmt' },
-      -- Conform can also run multiple formatters sequentially
-      -- python = { "isort", "black" },
-      --
-      -- You can use 'stop_after_first' to run the first available formatter from the list
-      -- javascript = { "prettierd", "prettier", stop_after_first = true },
+      bash = { 'shfmt' },
+      c = { 'clang-format' },
+      cpp = { 'clang-format' },
+      css = { 'prettier' },
+      go = { 'goimports', 'gofumpt' },
+      html = { 'prettier' },
+      javascript = { 'prettier' },
+      javascriptreact = { 'prettier' },
+      json = { 'prettier' },
+      jsonc = { 'prettier' },
+      lua = { 'stylua' },
+      markdown = { 'prettier' },
+      python = { 'isort', 'black' },
+      rust = { 'rustfmt' },
+      sh = { 'shfmt' },
+      toml = { 'taplo' },
+      typescript = { 'prettier' },
+      typescriptreact = { 'prettier' },
+      yaml = { 'prettier' },
+    },
+    formatters = {
+      ['clang-format'] = {
+        prepend_args = { '--fallback-style={BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: Never}' },
+      },
+      prettier = {
+        prepend_args = { '--tab-width', '4', '--no-use-tabs' },
+      },
+      shfmt = {
+        prepend_args = { '-i', '4' },
+      },
     },
   }
 
@@ -818,8 +942,8 @@ do
   --    See the README about individual language/framework/plugin snippets:
   --    https://github.com/rafamadriz/friendly-snippets
   --
-  -- vim.pack.add { gh 'rafamadriz/friendly-snippets' }
-  -- require('luasnip.loaders.from_vscode').lazy_load()
+  vim.pack.add { gh 'rafamadriz/friendly-snippets' }
+  require('luasnip.loaders.from_vscode').lazy_load()
 
   -- [[ Autocomplete Engine ]]
   vim.pack.add { { src = gh 'saghen/blink.cmp', version = vim.version.range '1.*' } }
@@ -865,7 +989,7 @@ do
     },
 
     sources = {
-      default = { 'lsp', 'path', 'snippets' },
+      default = { 'lsp', 'path', 'snippets', 'buffer' },
     },
 
     snippets = { preset = 'luasnip' },
@@ -898,7 +1022,30 @@ do
   vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
   -- Ensure basic parsers are installed
-  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+  local parsers = {
+    'bash',
+    'c',
+    'cpp',
+    'css',
+    'diff',
+    'go',
+    'html',
+    'javascript',
+    'json',
+    'lua',
+    'luadoc',
+    'markdown',
+    'markdown_inline',
+    'python',
+    'query',
+    'rust',
+    'toml',
+    'tsx',
+    'typescript',
+    'vim',
+    'vimdoc',
+    'yaml',
+  }
   require('nvim-treesitter').install(parsers)
 
   ---@param buf integer
