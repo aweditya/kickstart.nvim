@@ -843,6 +843,20 @@ do
     ts_ls = {},
     eslint = {},
     bashls = {},
+    hls = {
+      cmd = { vim.fn.expand '~/.ghcup/bin/haskell-language-server-wrapper', '--lsp' },
+      filetypes = { 'haskell', 'lhaskell', 'cabal' },
+      settings = {
+        haskell = {
+          formattingProvider = 'ormolu',
+          plugin = {
+            cabal = { globalOn = true },
+            hlint = { globalOn = true },
+          },
+        },
+      },
+    },
+    racket_langserver = {},
     html = {},
     cssls = {},
     jsonls = {},
@@ -891,6 +905,7 @@ do
     gh 'mason-org/mason.nvim',
     gh 'mason-org/mason-lspconfig.nvim',
     gh 'WhoIsSethDaniel/mason-tool-installer.nvim',
+    gh 'Julian/lean.nvim',
   }
 
   -- Automatically install LSPs and related tools to stdpath for Neovim
@@ -904,6 +919,11 @@ do
   --
   -- You can press `g?` for help in this menu.
   local ensure_installed = vim.tbl_keys(servers or {})
+  local local_servers = {
+    hls = true, -- managed by GHCup in ~/.ghcup/bin
+    racket_langserver = true, -- managed by raco pkg
+  }
+  ensure_installed = vim.tbl_filter(function(name) return not local_servers[name] end, ensure_installed)
   vim.list_extend(ensure_installed, {
     -- You can add other tools here that you want Mason to install
     'black',
@@ -923,6 +943,8 @@ do
     vim.lsp.config(name, server)
     vim.lsp.enable(name)
   end
+
+  require('lean').setup { mappings = true }
 end
 
 -- ============================================================
@@ -1087,12 +1109,14 @@ do
     'html',
     'javascript',
     'json',
+    'haskell',
     'lua',
     'luadoc',
     'markdown',
     'markdown_inline',
     'python',
     'query',
+    'racket',
     'rust',
     'toml',
     'tsx',
