@@ -203,12 +203,22 @@ do
   vim.diagnostic.config {
     update_in_insert = false,
     severity_sort = true,
-    float = { border = 'rounded', source = 'if_many' },
+    float = {
+      border = 'rounded',
+      focusable = true,
+      source = 'always',
+      wrap = true,
+    },
     underline = { severity = { min = vim.diagnostic.severity.WARN } },
 
-    -- Can switch between these as you prefer
-    virtual_text = true, -- Text shows up at the end of the line
-    virtual_lines = false, -- Text shows up underneath the line, with virtual lines
+    -- Keep inline diagnostics useful without letting long messages disappear
+    -- off the right edge. Use <leader>e/gl for the full message.
+    virtual_text = {
+      prefix = '●',
+      spacing = 2,
+      source = 'if_many',
+    },
+    virtual_lines = false,
 
     -- Auto open the float, so you can easily read the errors when jumping with `[d` and `]d`
     jump = {
@@ -221,6 +231,38 @@ do
       end,
     },
   }
+
+  local diagnostic_virtual_lines = false
+
+  vim.keymap.set('n', '<leader>e', function()
+    vim.diagnostic.open_float(nil, {
+      scope = 'line',
+      focus = true,
+      border = 'rounded',
+      source = 'always',
+    })
+  end, { desc = 'Show line diagnostics' })
+
+  vim.keymap.set('n', 'gl', function()
+    vim.diagnostic.open_float(nil, {
+      scope = 'line',
+      focus = false,
+      border = 'rounded',
+      source = 'always',
+    })
+  end, { desc = 'Show line diagnostics' })
+
+  vim.keymap.set('n', '<leader>td', function()
+    diagnostic_virtual_lines = not diagnostic_virtual_lines
+    vim.diagnostic.config {
+      virtual_lines = diagnostic_virtual_lines,
+      virtual_text = not diagnostic_virtual_lines and {
+        prefix = '●',
+        spacing = 2,
+        source = 'if_many',
+      } or false,
+    }
+  end, { desc = '[T]oggle [D]iagnostic lines' })
 
   vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
