@@ -108,6 +108,9 @@ do
   vim.g.loaded_python3_provider = 0
   vim.g.loaded_ruby_provider = 0
 
+  local openjdk_bin = '/opt/homebrew/opt/openjdk/bin'
+  if vim.uv.fs_stat(openjdk_bin) then vim.env.PATH = openjdk_bin .. ':' .. vim.env.PATH end
+
   -- [[ Setting options ]]
   --  See `:help vim.o`
   -- NOTE: You can change these options as you wish!
