@@ -101,6 +101,13 @@ do
   -- Set to true if you have a Nerd Font installed and selected in the terminal
   vim.g.have_nerd_font = false
 
+  -- These legacy host providers are only needed by remote plugins written for
+  -- those runtimes. LSP, formatters, Treesitter, and Telescope do not need them.
+  vim.g.loaded_node_provider = 0
+  vim.g.loaded_perl_provider = 0
+  vim.g.loaded_python3_provider = 0
+  vim.g.loaded_ruby_provider = 0
+
   -- [[ Setting options ]]
   --  See `:help vim.o`
   -- NOTE: You can change these options as you wish!
@@ -728,6 +735,7 @@ do
       },
     },
     gopls = {
+      filetypes = { 'go', 'gomod', 'gowork' },
       settings = {
         gopls = {
           gofumpt = true,
@@ -793,7 +801,9 @@ do
     html = {},
     cssls = {},
     jsonls = {},
-    yamlls = {},
+    yamlls = {
+      filetypes = { 'yaml' },
+    },
     taplo = {},
 
     -- Special Lua Config, as recommended by neovim help docs
@@ -997,11 +1007,11 @@ do
     -- Blink.cmp includes an optional, recommended rust fuzzy matcher,
     -- which automatically downloads a prebuilt binary when enabled.
     --
-    -- By default, we use the Lua implementation instead, but you may enable
-    -- the rust implementation via `'prefer_rust_with_warning'`
+    -- Use the faster Rust fuzzy matcher when available, falling back quietly to
+    -- Lua if the prebuilt binary cannot be downloaded.
     --
     -- See `:help blink-cmp-config-fuzzy` for more information
-    fuzzy = { implementation = 'lua' },
+    fuzzy = { implementation = 'prefer_rust' },
 
     -- Shows a signature help window while you type arguments for a function
     signature = { enabled = true },
